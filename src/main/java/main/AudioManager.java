@@ -12,9 +12,14 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static main.ResourceManager.RESOURCES_PROTOCOL;
 
 public class AudioManager extends Application {
 
@@ -26,7 +31,27 @@ public class AudioManager extends Application {
     public static void load(String audioName, String audioPath) {
         if (map.containsKey(audioName))
             return;
-        Media sound = new Media(new File(audioPath).toURI().toString());
+
+        Media sound;
+
+        if (audioPath.startsWith(RESOURCES_PROTOCOL)) {
+            audioPath = audioPath.substring(RESOURCES_PROTOCOL.length());
+            URL resource = ResourceManager.class.getResource(audioPath);
+            if (resource == null) {
+                throw new RuntimeException(audioPath + " Not Found");
+            }
+            URI uri;
+            try {
+                uri = resource.toURI();
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+            sound = new Media(uri.toString());
+
+        } else {
+            sound = new Media(new File(audioPath).toURI().toString());
+        }
+
         map.put(audioName, sound);
     }
 
@@ -70,25 +95,17 @@ public class AudioManager extends Application {
     public static void initBGM() {
         bgmPlayer = new MediaPlayer(map.get("bgm"));
         bgmPlayer.setVolume(0.1);
-        bgmPlayer.setOnEndOfMedia(new Runnable() {
-            @Override
-            public void run() {
-                bgmPlayer.seek(Duration.ZERO);
-            }
-        });
+        bgmPlayer.setOnEndOfMedia(() -> bgmPlayer.seek(Duration.ZERO));
     }
 
     public static void playBGM() {
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(9000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                bgmPlayer.play();
+        Thread thread = new Thread(() -> {
+            try {
+                Thread.sleep(9000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
+            bgmPlayer.play();
         });
         thread.start();
     }

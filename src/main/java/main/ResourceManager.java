@@ -13,7 +13,9 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.RescaleOp;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,18 +31,20 @@ public class ResourceManager {
     private static boolean basicLoaded;
     private static boolean fullyLoaded;
 
+    public static final String RESOURCES_PROTOCOL = "resources:";
 
     private static class LoadingThread implements Runnable {
 
         private static void load(ArrayList<Pair<Pair<String, String>, Color>> basicList, ArrayList<Pair<Pair<String, String>, Color>> fullList) {
+
             for (Pair<Pair<String, String>, Color> pair : basicList)
-                imgs.put(pair.getKey().getKey(), loadImage("resources/" + pair.getKey().getValue(), pair.getValue()));
+                imgs.put(pair.getKey().getKey(), loadImage(RESOURCES_PROTOCOL + "/" + pair.getKey().getValue(), pair.getValue()));
             for (Pair<String, String> pair : soundList) {
-                AudioManager.load(pair.getKey(), "resources/" + pair.getValue());
+                AudioManager.load(pair.getKey(), RESOURCES_PROTOCOL + "/" + pair.getValue());
             }
             basicLoaded = true;
             for (Pair<Pair<String, String>, Color> pair : fullList) {
-                imgs.put(pair.getKey().getKey(), loadImage("resources/" + pair.getKey().getValue(), pair.getValue()));
+                imgs.put(pair.getKey().getKey(), loadImage(RESOURCES_PROTOCOL + "/" + pair.getKey().getValue(), pair.getValue()));
                 System.out.println("Finish loading " + pair.getKey().getKey());
             }
             fullyLoaded = true;
@@ -74,13 +78,13 @@ public class ResourceManager {
         addList(basicList, "attention_yellow", "attention.png", new Color(175, 160, 19, 255));
         addList(basicList, "popo", "popo.png");
 
-        addList(fullList,  "menu_button", "menu_button.png");
-        addList(fullList,  "menu_button_red", "menu_button.png", new Color(210,10,60));
-        addList(fullList,  "menu_button_orange", "menu_button.png", new Color(220, 117, 48));
-        addList(fullList,  "menu_button_blue", "menu_button.png", new Color(22, 115, 149));
-        addList(fullList,  "menu_button_green_bright", "menu_button.png", new Color(115, 177, 91));
-        addList(fullList,  "menu_button_green", "menu_button.png", new Color(100, 151, 39));
-        addList(fullList,  "menu_button_white", "menu_button.png", new Color(255, 255, 255));
+        addList(fullList, "menu_button", "menu_button.png");
+        addList(fullList, "menu_button_red", "menu_button.png", new Color(210, 10, 60));
+        addList(fullList, "menu_button_orange", "menu_button.png", new Color(220, 117, 48));
+        addList(fullList, "menu_button_blue", "menu_button.png", new Color(22, 115, 149));
+        addList(fullList, "menu_button_green_bright", "menu_button.png", new Color(115, 177, 91));
+        addList(fullList, "menu_button_green", "menu_button.png", new Color(100, 151, 39));
+        addList(fullList, "menu_button_white", "menu_button.png", new Color(255, 255, 255));
         addList(fullList, "player_label", "player_label.png");
         addList(fullList, "room_ready_yes", "yes.png");
         addList(fullList, "room_ready_no", "waiting.png");
@@ -188,11 +192,21 @@ public class ResourceManager {
     }
 
     private static BufferedImage loadImage(String imgPath, Color color) {
-        BufferedImage img = null;
+        BufferedImage img;
         try {
-            img = ImageIO.read(new FileInputStream(imgPath));
+            if (imgPath.startsWith(RESOURCES_PROTOCOL)) {
+                imgPath = imgPath.substring(RESOURCES_PROTOCOL.length());
+                InputStream resource = ResourceManager.class.getResourceAsStream(imgPath);
+                if (resource == null) {
+                    throw new FileNotFoundException(imgPath + " Not Found");
+                }
+                img = ImageIO.read(resource);
+            } else {
+                img = ImageIO.read(new FileInputStream(imgPath));
+            }
         } catch (IOException e) {
             ErrorMsg.error(String.format("File error: %s", e.getMessage()));
+            throw new RuntimeException(e);
         }
         BufferedImage res = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_ARGB);
         Graphics g = res.createGraphics();
